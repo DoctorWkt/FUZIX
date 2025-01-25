@@ -167,3 +167,15 @@ clean:
 	+(cd Library; $(MAKE) clean)
 	+(cd Kernel; $(MAKE) clean)
 	+(cd Applications; $(MAKE) clean)
+	rm -f Library/libs/*.\#
+	rm -f Library/libs/*.\%
+	rm -f Library/libs/*.\@
+	rm -f Library/libs/*.\^
+	rm -f Library/libs/fuzixz80/syscall*.s
+	rm -f Library/libs/fuzixz80/Makefile
+	rm -f Standalone/filesystem-src/etc-files/issue
+	rm -f Library/libs/.sym*
+	rm -f Applications/V7/cmd/sh/fshbuild*c
+	rm -f Library/libs/crt0_68000.s
+	rm -f Library/libs/crt0nostdio_68000.s
+	rm -f Library/libs/setjmp_68000.s
