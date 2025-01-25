@@ -171,7 +171,6 @@ clean:
 	rm -f Library/libs/*.\%
 	rm -f Library/libs/*.\@
 	rm -f Library/libs/*.\^
-	rm -f Library/libs/fuzixz80/syscall*.s
 	rm -f Library/libs/fuzixz80/Makefile
 	rm -f Standalone/filesystem-src/etc-files/issue
 	rm -f Library/libs/.sym*
