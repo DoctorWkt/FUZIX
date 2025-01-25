@@ -5,10 +5,13 @@ CSRCS += devices.c main.c libc.c
 ASRCS = p68000.S crt0.S
 ASRCS += tricks.S
 
-DSRCS = ../../dev/devide.c ../../dev/mbr.c ../../dev/blkdev.c ../../dev/devide_discard.c
+DSRCS = ../../dev/mbr.c ../../dev/blkdev.c
+DSRCS += ../../dev/devide.c ../../dev/devide_discard.c
+DSRCS += ../../dev/devsd.c ../../dev/devsd_discard.c
 DOBJS = $(patsubst ../../dev/%.c,%.o, $(DSRCS))
 
-LSRCS = ../../lib/68000exception.c ../../lib/68000usercopy.c ../../lib/68000relocate.c
+LSRCS = ../../lib/68000exception.c ../../lib/68000usercopy.c
+LSRCS += ../../lib/68000relocate.c
 LOBJS = $(patsubst ../../lib/%.c,%.o, $(LSRCS))
 
 COBJS = $(CSRCS:.c=$(BINEXT))
@@ -37,18 +40,20 @@ clean:
 	rm -f *.o fuzix.elf loader.elf loader.map loader.bin core *~ 
 
 image:
-	$(CROSS_LD) -M -o fuzix.elf -T fuzix.ld \
-	p68000.o ../../start.o ../../version.o ../../cpu-68000/lowlevel-68000.o \
-	tricks.o main.o ../../timer.o ../../kdata.o 68000exception.o devices.o \
-	../../devio.o ../../filesys.o ../../process.o ../../inode.o ../../syscall_fs.o \
-	../../syscall_proc.o ../../syscall_other.o ../../mm.o ../../flat.o \
-	../../blk512.o ../../tty.o ../../devsys.o ../../usermem.o ../../syscall_fs2.o \
-	../../syscall_fs3.o ../../syscall_exec32.o ../../syscall_exec.o \
-	blkdev.o devide.o devide_discard.o mbr.o 68000relocate.o \
-	68000usercopy.o ../../cpu-68000/usermem_std-68000.o devtty.o libc.o ../../malloc.o \
-	../../level2.o ../../syscall_level2.o ../../select.o > ../../fuzix.map
+	$(CROSS_LD) -M -o fuzix.elf -T fuzix.ld p68000.o ../../start.o \
+	  ../../version.o ../../cpu-68000/lowlevel-68000.o tricks.o \
+	  main.o ../../timer.o ../../kdata.o 68000exception.o \
+	  devices.o ../../devio.o ../../filesys.o ../../process.o \
+	  ../../inode.o ../../syscall_fs.o ../../syscall_proc.o \
+	  ../../syscall_other.o ../../mm.o ../../flat.o ../../blk512.o \
+	  ../../tty.o ../../devsys.o ../../usermem.o ../../syscall_fs2.o \
+	  ../../syscall_fs3.o ../../syscall_exec32.o ../../syscall_exec.o \
+	  blkdev.o devide.o devide_discard.o mbr.o 68000relocate.o \
+	  devsd.o devsd_discard.o \
+	  68000usercopy.o ../../cpu-68000/usermem_std-68000.o devtty.o \
+	  libc.o ../../malloc.o ../../level2.o ../../syscall_level2.o \
+	  ../../select.o > ../../fuzix.map
 	$(CROSS_COMPILE)objcopy fuzix.elf -O binary ../../fuzix.bin
-
 	$(CROSS_CC) -c loader.S
 	$(CROSS_LD) -M -o loader.elf -T loader.ld loader.o >loader.map
 	$(CROSS_COMPILE)objcopy loader.elf -O binary loader.bin

@@ -59,13 +59,13 @@ kernelmem:
 
 	    bsr install_vectors
 
-	    /* We use Vector 0x81 for the DUART */
-	    move.l #timer_irq,$204
+	    /* We use Vector 0x45 for the DUART */
+	    move.l #timer_irq,$114
 
 	    lea.l $F00000,a0
 	    move.b #$80,CTLR(a0)
 	    move.b #$4,CTUR(a0)
-	    move.b #$81,IVR(a0)
+	    move.b #$45,IVR(a0)
 	    move.b #$2A,IMR(a0)
             rts
 

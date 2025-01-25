@@ -43,6 +43,9 @@
 
 #define CONFIG_IDE
 
+#define CONFIG_SD
+#define SD_DRIVE_COUNT  1
+
 #define plt_copyright()
 
 /* Note: select() in the level 2 code will not work on this configuration
