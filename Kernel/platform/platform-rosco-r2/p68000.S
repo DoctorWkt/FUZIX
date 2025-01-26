@@ -143,7 +143,7 @@ outcharw:
 ;
 devide_read_data:
 	move.l blk_op,a0
-	move.l #$00FFE000,a1
+	move.l #$00FFD000,a1
 	move.w #255,d0
 devide_read_l:
 	move.w (a1),(a0)+
@@ -152,7 +152,7 @@ devide_read_l:
 
 devide_write_data:
 	move.l blk_op,a0
-	move.l #$00FFE000,a1
+	move.l #$00FFD000,a1
 	move.w #255,d0
 devide_write_l:
 	move.w (a0)+,(a1)
