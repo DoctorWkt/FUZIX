@@ -11,11 +11,45 @@
 		.globl udata_block0
 		.globl devide_read_data
 		.globl devide_write_data
+		.globl sd_spi_clock
+		.globl sd_spi_raise_cs
+		.globl sd_spi_lower_cs
+		.globl sd_spi_transmit_byte
+		.globl sd_spi_receive_byte
+		.globl sd_spi_transmit_sector
+		.globl sd_spi_receive_sector
 
 #define CTUR $D
 #define CTLR $F
 #define IMR  $B
 #define IVR $19
+
+/* Defines for SD card access via SPI */
+SPI_CS_B   = 2	/* Output port pin */
+SPI_SCK_B  = 4	/* Output port pin */
+SPI_COPI_B = 6	/* Output port pin */
+SPI_CIPO_B = 2	/* Input port pin  */
+SPI_CS1_B  = 7	/* Output port pin */
+
+/* Calculate bit values for bit positions */
+SPI_CS	 = (1<<SPI_CS_B)
+SPI_CS1	 = (1<<SPI_CS1_B)
+SPI_SCK	 = (1<<SPI_SCK_B)
+SPI_COPI = (1<<SPI_COPI_B)
+SPI_CIPO = (1<<SPI_CIPO_B)
+
+/* Since DUART GPIO is active-low, use register aliases
+ * for DUART ports to be less confusing
+ */
+
+DUART_BASE_MBR2 = 0xf00001
+R_INPUTPORT = 0x1a
+W_OPR_SETCMD = 0x1c
+W_OPR_RESETCMD = 0x1e
+DUART_INPUT   = DUART_BASE_MBR2 + R_INPUTPORT
+DUART_OUT_LO  = DUART_BASE_MBR2 + W_OPR_SETCMD
+OUT_LO_OFFSET = W_OPR_SETCMD - R_INPUTPORT
+OUT_HI_OFFSET = W_OPR_RESETCMD - W_OPR_SETCMD
 
 .mri 1
 plt_monitor:
@@ -29,7 +63,7 @@ plt_reboot:
 init_early:
 	    lea.l udata_block0,a5	; udata ptr
 	    move.l a5,udata_shadow	; shadow copy for entry/exit
-            rts
+	    rts
 
 plt_idle:
 	    stop #($2000+EI_MASK)
@@ -47,7 +81,7 @@ init_hardware:
 ;	    move.w #2048,d0
 ;	    bra kernelmem
 ;tiny68k:
-            ; set system RAM size(hardcode hacks for now)
+	    ; set system RAM size(hardcode hacks for now)
 	    move.w #1024,d0
 kernelmem:
 	    move.w d0,ramsize
@@ -59,7 +93,7 @@ kernelmem:
 
 	    bsr install_vectors
 
-	    /* We use Vector 0x45 for the DUART */
+	    /* We use Vector 0x45 (dec. 69) for the DUART */
 	    move.l #timer_irq,$114
 
 	    lea.l $F00000,a0
@@ -67,7 +101,7 @@ kernelmem:
 	    move.b #$4,CTUR(a0)
 	    move.b #$45,IVR(a0)
 	    move.b #$2A,IMR(a0)
-            rts
+	    rts
 
 timer_irq:
 	    ; C will save and restore a2+/d2+
@@ -83,9 +117,9 @@ timer_irq:
 	    beq no_preempt
 	    ;
 	    ;	Vanish into the scheduler. Some other task will pop back out
-	    ;   and eventually we'll re-appear here and continue.
+	    ;	and eventually we'll re-appear here and continue.
 	    ;
-	    ;   FIXME: check IRQ masking
+	    ;	FIXME: check IRQ masking
 	    ;
 	    move.l U_DATA__U_PTAB(a5),a0
 	    ; We might be in STOPPED state in which case do not go back
@@ -99,7 +133,7 @@ no_ready:
 no_preempt:
 	    tst.b U_DATA__U_CURSIG(a5)
 	    beq no_signal
-	    ;   FIXME: this is ugly
+	    ;	FIXME: this is ugly
 	    movem.l (sp)+,a0-a1/a5/d0-d1
 	    move.w sr,-(sp)
 	    move.w #0,-(sp)
@@ -159,3 +193,140 @@ devide_write_l:
 	dbra d0,devide_write_l
 	rts
 
+;
+;	SD via SPI
+;
+sd_spi_clock:
+	rts
+sd_spi_raise_cs:
+	/* XXX FIX */
+	rts
+sd_spi_lower_cs:
+	/* XXX FIX */
+	rts
+
+/* This code borrowed from Rosco r2 blockdev/dua_spi_asm.asm */
+sd_spi_transmit_byte:
+	move.b	4+3(sp),d0		/*   12	 d0 = send byte */
+	movem.l d2-d5,-(a7)		/* 12+32 save regs */
+	move.l	#DUART_OUT_LO,a0	/*   12	 a0 = output LO */
+	lea.l	OUT_HI_OFFSET(a0),a1	/*    8	 a1 = output HI */
+	moveq.l #SPI_SCK,d1		/*    4	 d1 = SCK bit mask */
+	moveq.l #SPI_COPI,d2		/*    4	 d2 = COPI bit mask */
+	moveq.l #SPI_SCK,d3		/*    4	 d3 = SCK|COPI bit mask */
+	or.l	#SPI_COPI,d3
+					/*	 d4 = temp (COPI LO) */
+					/*	 d5 = temp (COPI HI) */
+	rept	8
+/* send bits 7...0 */
+	add.b	d0,d0		/*  4  shift MSB to carry */
+	scs	d5		/* 4/6	temp set to 0 or 0xff based on carry */
+	and.b	d2,d5		/*  4  isolate COPI HI bit to output */
+	move.b	d5,d4		/*  4  copy COPI HI bit */
+	eor.b	d3,d4		/*  4  set SCK LO and invert COPI for LO bit  */
+	move.b	d4,(a0)		/*  8  output SCK LO and COPI LO (if send bit LO) */
+	move.b	d5,(a1)		/*  8  output COPI HI (if send bit HI) */
+	move.b	d1,(a1)		/*  8  output SCK HI */
+	endr
+
+	movem.l (a7)+,d2-d5	/* 12+32  restore regs */
+spi_sb_rts:	rts
+
+sd_spi_receive_byte:
+	movem.l d2-d3/a2,-(a7)		/* 12+24	save regs */
+	move.l	#DUART_INPUT,a0		/* 12 a0 = input */
+	lea.l	OUT_LO_OFFSET(a0),a1	/* 8  a1 = output LO */
+	lea.l	OUT_HI_OFFSET(a1),a2	/* 8  a2 = output HI */
+	moveq.l #SPI_SCK,d1		/* 4  d1 = SCK bit mask */
+	moveq.l #SPI_CIPO_B,d2		/* 4  d2 = CIPO bit number */
+					/*    d3 = temp */
+
+/* read bit 7 */
+	moveq.l #0,d0		/*     4	clear read byte */
+	move.b	d1,(a1)		/*     8	output SCK LO */
+	btst.b	d2,(a0)		/*     8	test input CIPO bit */
+	sne	d3		/*   4/6	temp set to 0 or 0xff based on CIPO bit */
+	sub.b	d3,d0		/*     4	set low bit of read byte by subtracting 0 or -1 */
+	move.b	d1,(a2)		/*     8	output SCK HI */
+
+	rept	7
+/*  read bits 6...0 */
+	add.b	d0,d0		/*     4	shift read byte left */
+	move.b	d1,(a1)		/*     8	output SCK LO */
+	btst.b	d2,(a0)		/*     8	test input CIPO bit */
+	sne	d3		/*   4/6	temp set to 0 or 0xff based on CIPO bit */
+	sub.b	d3,d0		/*     4	set low bit of read byte by subtracting 0 or -1 */
+	move.b	d1,(a2)		/*     8	output SCK HI */
+	endr
+	movem.l (a7)+,d2-d3/a2	/* 12+24	restore regs */
+				/*	d0 = result read byte */
+spi_rb_rts:	rts
+
+sd_spi_receive_sector:
+	move.w	#512,d0
+	/* Get the argument - address of buffer */
+	/* As we are a flat system we don't have to worry about */
+	/* kernel v user etc */
+	move.l	blk_op,a0		/* 12	load data buffer */
+	movem.l d2-d4/a2-a3,-(a7)	/*12+40	save regs */
+	move.l	#DUART_INPUT,a1		/*  12	a1 = input */
+	lea.l	OUT_LO_OFFSET(a1),a2	/*  8	a2 = output LO */
+	lea.l	OUT_HI_OFFSET(a2),a3	/*  8	a3 = output HI */
+	moveq.l #SPI_SCK,d1		/*  4	d1 = SCK bit mask */
+	moveq.l #SPI_CIPO_B,d2		/*  4	d2 = CIPO bit num */
+					/*	d3 = temp bit */
+					/*	d4 = temp byte */
+
+.spi_rb_loop:
+	rept	8
+/* read bits 7...0 */
+	add.b	d4,d4			/*  4	shift read byte left */
+	move.b	d1,(a2)			/*  8	set SCK LO */
+	btst.b	d2,(a1)			/*  8	read input CIPO bit */
+	sne	d3			/* 4/6	d3 = 0 or -1 */
+	sub.b	d3,d4			/*  4	set low bit of read byte */
+	move.b	d1,(a3)			/*  8	set SCK HI */
+	endr
+
+	move.b	d4,(a0)+		/*  8	save read byte */
+	subq.l	#1,d0			/*  8	decrement count */
+	bne.s	.spi_rb_loop		/* 8/10	loop if not zero */
+
+.spi_rb_done:
+	movem.l (a7)+,d2-d4/a2-a3	/* 12+40 restore regs */
+	rts
+
+sd_spi_transmit_sector:
+	move.w	#512,d0
+	move.l	blk_op,a0		/* 12	load data buffer */
+	movem.l d2-d6/a2,-(a7)		/* 12+48 save regs */
+	move.l	#DUART_OUT_LO,a1	/*  12	a1 = output LO */
+	lea.l	OUT_HI_OFFSET(a1),a2	/*   8	a2 = output HI */
+	moveq.l #SPI_SCK,d2		/*   4	d2 = SCK bit mask */
+	moveq.l #SPI_COPI,d3		/*   4	d3 = COPI bit mask */
+	moveq.l #SPI_SCK,d4		/*   4	d4 = SCK|COPI bit mask */
+	or.l	#SPI_COPI,d4
+					/*	d5 = temp COPI LO */
+					/*	d6 = temp COPI HI */
+
+.spi_sb_loop:
+	move.b	(a0)+,d1		/*    8	load send byte */
+
+	rept	8
+/* send bits 7...0 */
+	add.b	d1,d1			/*    4	shift MSB to carry */
+	scs	d6			/*  4/6	temp set to 0 or 0xff based on carry */
+	and.b	d3,d6			/*    4	isolate COPI HI bit to output */
+	move.b	d6,d5			/*    4	copy COPI HI bit */
+	eor.b	d4,d5			/*    4	set SCK LO and invert COPI for LO bit  */
+	move.b	d5,(a1)			/*    8	output SCK LO and COPI LO (if send bit LO) */
+	move.b	d6,(a2)			/*    8	output COPI HI (if send bit HI) */
+	move.b	d2,(a2)			/*    8	output SCK HI */
+	endr
+
+	subq.l	#1,d0
+	bne	.spi_sb_loop  
+
+.spi_sb_done:
+	movem.l (a7)+,d2-d6/a2		/* 12+48 restore regs */
+	rts

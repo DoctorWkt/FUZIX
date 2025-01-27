@@ -37,7 +37,7 @@ $(LOBJS): %.o: ../../lib/%.c
 tricks.S: ../../lib/68000flat.S
 
 clean:
-	rm -f *.o fuzix.elf loader.elf loader.map loader.bin core *~ 
+	rm -f *.o fuzix.elf core *~ fuzix.dis
 
 image:
 	$(CROSS_LD) -M -o fuzix.elf -T fuzix.ld p68000.o ../../start.o \
@@ -54,17 +54,13 @@ image:
 	  libc.o ../../malloc.o ../../level2.o ../../syscall_level2.o \
 	  ../../select.o > ../../fuzix.map
 	$(CROSS_COMPILE)objcopy fuzix.elf -O binary ../../fuzix.bin
-	$(CROSS_CC) -c loader.S
-	$(CROSS_LD) -M -o loader.elf -T loader.ld loader.o >loader.map
-	$(CROSS_COMPILE)objcopy loader.elf -O binary loader.bin
+	m68k-elf-objdump --disassemble -S fuzix.elf > fuzix.dis
 
 IMAGES = $(FUZIX_ROOT)/Images/$(TARGET)
 
 diskimage:
 	# Make a blank disk image with partition
 	dd if=$(FUZIX_ROOT)/Standalone/filesystem-src/parttab.40M of=$(IMAGES)/disk.img bs=40017920 conv=sync,swab
-	# Add the bootstrap loader
-	dd if=loader.bin of=$(IMAGES)/disk.img bs=512 seek=1 conv=notrunc,swab
 	# Add the file system
 	dd if=$(IMAGES)/filesys.img of=$(IMAGES)/disk.img bs=512 seek=2048 conv=notrunc,swab
 	# Add the kernel

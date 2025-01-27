@@ -39,12 +39,3 @@ void device_init(void)
   devide_init();
   devsd_init();
 }
-
-/* Empty for now */
-void sd_spi_clock(bool go_fast) { }
-void sd_spi_raise_cs(void) { }
-void sd_spi_lower_cs(void) { }
-void sd_spi_transmit_byte(uint_fast8_t byte) { }
-uint_fast8_t sd_spi_receive_byte(void) { return(0); }
-bool sd_spi_receive_sector(void) { return(false); }
-bool sd_spi_transmit_sector(void) { return(false); }
