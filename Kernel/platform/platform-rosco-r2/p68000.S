@@ -199,10 +199,10 @@ devide_write_l:
 sd_spi_clock:
 	rts
 sd_spi_raise_cs:
-	/* XXX FIX */
+	move.b #4,DUART_OUT_LO
 	rts
 sd_spi_lower_cs:
-	/* XXX FIX */
+	move.b #0,DUART_OUT_LO
 	rts
 
 /* This code borrowed from Rosco r2 blockdev/dua_spi_asm.asm */
