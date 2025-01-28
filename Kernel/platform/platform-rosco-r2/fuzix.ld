@@ -5,7 +5,7 @@ SEARCH_DIR(.)
 
 MEMORY
 {
-  ram (rwx) : ORIGIN = 0x400, LENGTH = 0x100000-0x400
+  ram (rwx) : ORIGIN = 0x2000, LENGTH = 0x100000-0x2000
 }
 
 /*
