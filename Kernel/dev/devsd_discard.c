@@ -56,7 +56,9 @@ void sd_init_drive(uint8_t drive)
 
     blk->transfer = devsd_transfer_sector;
     blk->driver_data = (sd_drive & DRIVE_NR_MASK) | card_type;
-    
+
+kprintf("");	// WKT - Why?
+
     /* read and compute card size */
     if(sd_send_command(CMD9, 0) == 0 && sd_spi_wait(false) == 0xFE){
         for(n=0; n<16; n++)
