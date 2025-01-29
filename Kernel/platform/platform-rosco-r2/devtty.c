@@ -5,6 +5,13 @@
 #include <devtty.h>
 #include <tty.h>
 
+/* NOTE NOTE: This file comes from the Tiny68K port of
+ * FUZIX. I've made tty_setup() essentially empty as
+ * the Rosco ROM already sets up the baud rate and
+ * as yet I don't know why the code here misconfigures
+ * the UART - Warren
+ */
+
 static unsigned char tbuf1[TTYSIZ];
 static unsigned char tbuf2[TTYSIZ];
 
@@ -108,7 +115,7 @@ static const uint8_t baudsrc[] = {
 	0x06,		/* 19200 is available on all but BRG1 ACR 0 */
 	0x05,		/* 38400 requires ACR 0 */
 	0x04,		/* 57600 requires BRG 2 */
-	0x04,		/* 11520 requires BRG 2 */
+	0x04,		/* 115200 requires BRG 2 */
 };
 /* BRG values per speed for each table */
 static const uint8_t baudset[3][16] = {
@@ -185,8 +192,10 @@ void tty_setup(uint8_t minor, uint8_t flags)
 	uint8_t base = (minor - 1) * 0x10;
 	uint8_t table = baudsrc[baud];
 
-	static uint8_t oldbaud[3] = {0., B38400, B38400 };
+	static uint8_t oldbaud[3] = {0., B115200, B115200 };
 	static uint8_t oldbrg;
+
+	return;	/* NOTE: for now. See note at the top - WKT */
 
 	/* If both ports are open we need to check the baud rate pair is
 	   achievable */
