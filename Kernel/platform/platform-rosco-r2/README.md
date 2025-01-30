@@ -95,7 +95,7 @@ filesystem. I need help here to get this to work.
 
 ## CH375 USB
 
-This works and I can boot to a `root` login, login an run commands.
+This works and I can boot to a `root` login, login and run commands.
 I suspect that disk writes are not working perfectly yet. I literally
 got it to run a few minutes ago.
 
