@@ -23,6 +23,7 @@
 		.globl ch375_send_data
 		.globl ch375_read_data
 		.globl ch375_get_status
+		.globl ch375_get_status_now
 		.globl ch375_read_block
 		.globl ch375_write_block
 		.globl cpu_delay
@@ -400,6 +401,11 @@ ch375_get_status:
         move.b CH375_STATUS,D0
         cmpi.b #$FF,D0
         beq    ch375_get_status
+        rts
+
+/* As above but don't loop */
+ch375_get_status_now:
+        move.b CH375_STATUS,D0
         rts
 
 /*

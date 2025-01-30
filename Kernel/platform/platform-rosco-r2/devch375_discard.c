@@ -44,9 +44,10 @@ void devch375_init(void)
     ch375_send_cmd(CMD_SET_USB_MODE);
     ch375_send_data(6);
 
-    /* Get the CH375 status. */
+    /* Get the CH375 status after a short delay. */
     /* We expect to get USB_INT_CONNECT */
-    status= ch375_get_status();
+    cpu_delay(50);
+    status= ch375_get_status_now();
     if (status != USB_INT_CONNECT) {
         kprintf("not found\n");
         return;

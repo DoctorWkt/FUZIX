@@ -1,6 +1,6 @@
 # FUZIX Port to the Rosco r2 SBC
 
-Warren Toomey - 2025
+Warren Toomey - 2025/01/30
 
 ## Introduction
 
@@ -39,8 +39,10 @@ using the SD card at present.
 ## Configuration
 
 Look in `config.h` for compile-time configuration defines.
-`CONFIG_FLAT` means we have no MMU. `CONFIG_SD` and `SD_DRIVE_COUNT` sets
-us up for one SD card. `TTY_INIT_BAUD` is set for 115200 baud.
+`TTY_INIT_BAUD` is set for 115200 baud. `CONFIG_FLAT` means we have no MMU.
+`CONFIG_SD` and `SD_DRIVE_COUNT` sets us up for one SD card.
+`CONFIG_USB` supports my USB expansion board:
+https://github.com/DoctorWkt/xv6-rosco-r2/tree/ch375/hardware
 
 This line in `fuzix.ld`:
 
@@ -90,3 +92,13 @@ and the high-level SD card code is in `Kernel/dev/devsd.c` and
 `Kernel/dev/devsd_discard.c`. However, the kernel complains about
 timeouts and retries when I try to use the SD card as the root
 filesystem. I need help here to get this to work.
+
+## CH375 USB
+
+This works and I can boot to a `root` login, login an run commands.
+I suspect that disk writes are not working perfectly yet. I literally
+got it to run a few minutes ago.
+
+If you have the CH375 expansion board, then just copy the `sdcard.img`
+file to it. At boot time, the CH375 device should appear as `hdb`
+with two partitions. Boot off `hdb2`.
