@@ -38,4 +38,5 @@ void device_init(void)
 {
   // devide_init();
   devsd_init();
+  devch375_init();
 }

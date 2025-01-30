@@ -6,6 +6,7 @@
 #include <blkdev.h>
 
 uint16_t swap_dev = 0xFFFF;
+uint8_t CH375_STATUS= 0;
 
 void do_beep(void)
 {

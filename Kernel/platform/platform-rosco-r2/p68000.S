@@ -18,11 +18,14 @@
 		.globl sd_spi_receive_byte
 		.globl sd_spi_transmit_sector
 		.globl sd_spi_receive_sector
-
-#define CTUR $D
-#define CTLR $F
-#define IMR  $B
-#define IVR $19
+		.globl ch375_irq5_handler
+		.globl ch375_send_cmd
+		.globl ch375_send_data
+		.globl ch375_read_data
+		.globl ch375_get_status
+		.globl ch375_read_block
+		.globl ch375_write_block
+		.globl cpu_delay
 
 /* Defines for SD card access via SPI */
 SPI_CS_B   = 2	/* Output port pin */
@@ -38,9 +41,11 @@ SPI_SCK	 = (1<<SPI_SCK_B)
 SPI_COPI = (1<<SPI_COPI_B)
 SPI_CIPO = (1<<SPI_CIPO_B)
 
-/* Since DUART GPIO is active-low, use register aliases
- * for DUART ports to be less confusing
- */
+/* DUART defines */
+#define CTUR $D
+#define CTLR $F
+#define IMR  $B
+#define IVR $19
 
 DUART_BASE_MBR2 = 0xf00001
 R_INPUTPORT = 0x1a
@@ -50,6 +55,36 @@ DUART_INPUT   = DUART_BASE_MBR2 + R_INPUTPORT
 DUART_OUT_LO  = DUART_BASE_MBR2 + W_OPR_SETCMD
 OUT_LO_OFFSET = W_OPR_SETCMD - R_INPUTPORT
 OUT_HI_OFFSET = W_OPR_RESETCMD - W_OPR_SETCMD
+
+/* CH375 I/O addresses */
+#define CHDATARD  $FFF001
+#define CHDATAWR  $FFF001
+#define CHCMDWR   $FFF003
+
+/* CH375 Commands */
+#define CMD_RESET_ALL           $05
+#define CMD_SET_USB_MODE        $15
+#define CMD_GET_STATUS          $22
+#define CMD_RD_USB_DATA         $28
+#define CMD_WR_USB_DATA         $2B
+#define CMD_DISK_INIT           $51
+#define CMD_DISK_SIZE           $53
+#define CMD_DISK_READ           $54
+#define CMD_DISK_RD_GO          $55
+#define CMD_DISK_WRITE          $56
+#define CMD_DISK_WR_GO          $57
+#define CMD_DISK_READY          $59
+
+/* CH375 Status Results */
+#define USB_INT_SUCCESS         $14
+#define USB_INT_CONNECT         $15
+#define USB_INT_DISCONNECT      $16
+#define USB_INT_DISK_READ       $1D
+#define USB_INT_DISK_WRITE      $1E
+
+/* Address of the IRQ5 and clock tick vector */
+#define IRQ5_VECTOR   $74
+#define TICK_VECTOR   $114
 
 .mri 1
 plt_monitor:
@@ -70,17 +105,6 @@ plt_idle:
 	    rts
 
 init_hardware:
-;	    lea $300000,a0		; will be wrapped on the rc2014
-;	    lea $100000,a1		; well above the kernel
-;	    move.w #$AA55,(a0)
-;	    cmp.w #$AA55,(a1)
-;	    bne tiny68k
-;	    move.w #$55AA,(a0)
-;	    cmp.w #$55AA,(a1)
-;	    bne tiny68k
-;	    move.w #2048,d0
-;	    bra kernelmem
-;tiny68k:
 	    ; set system RAM size(hardcode hacks for now)
 	    move.w #1024,d0
 kernelmem:
@@ -93,8 +117,9 @@ kernelmem:
 
 	    bsr install_vectors
 
-	    /* We use Vector 0x45 (dec. 69) for the DUART */
-	    move.l #timer_irq,$114
+	    /* Connect the timer and CH375 interrupt handlers */
+	    move.l #timer_irq,TICK_VECTOR
+	    move.l #ch375_irq5_handler,IRQ5_VECTOR
 
 	    lea.l $F00000,a0
 	    move.b #$80,CTLR(a0)
@@ -330,3 +355,220 @@ sd_spi_transmit_sector:
 .spi_sb_done:
 	movem.l (a7)+,d2-d6/a2		/* 12+48 restore regs */
 	rts
+
+/* CH375 code */
+
+/*
+ * This is the interrupt handler for the CH375.
+ * Send a CMD_GET_STATUS to the device,
+ * read a byte of data and save it in the
+ * CH375_STATUS location.
+ */
+ch375_irq5_handler:
+        move.b #CMD_GET_STATUS,CHCMDWR
+        move.b CHDATARD,CH375_STATUS
+        rte
+
+/*
+ * Write the given command to the CH375.
+ * Clear the CH375_STATUS beforehand by
+ * putting a dummy value there.
+ */
+ch375_send_cmd:
+        move.b #$FF,CH375_STATUS
+        move.b 7(A7),D0
+        move.b D0,CHCMDWR
+        rts
+
+/* Write the given data to the CH375. */
+ch375_send_data:
+        move.b 7(A7),D0
+        move.b D0,CHDATAWR
+        rts
+
+/* Read data from the CH375 */
+ch375_read_data:
+        move.b CHDATARD,D0
+        rts
+
+/*
+ * Get the CH375 status from the
+ * CH375_STATUS memory location.
+ * Loop until it is not $FF
+ */
+ch375_get_status:
+        move.b CH375_STATUS,D0
+        cmpi.b #$FF,D0
+        beq    ch375_get_status
+        rts
+
+/*
+ * Given a pointer to a 512-byte buffer and an
+ * LBA number, read the block from the CH375 into
+ * the buffer. Return 1 on success, 0 otherwise.
+ *
+ * uint32_t ch375_read_block(uint8_t *buf, uint32_t lba)
+ */
+ch375_read_block:
+
+        /* Check that buf isn't NULL */
+        movea.l 4(SP),A0
+        cmp.l   #0,4(SP)
+        beq.w   ch375_readfail
+
+        /* Send the disk read command followed by the LBA */
+        /* in little-endian format, then ask for one block. */
+        move.b  #$FF,CH375_STATUS
+        move.b  #CMD_DISK_READ,CHCMDWR
+        move.b  11(SP),CHDATAWR
+        move.b  10(SP),CHDATAWR
+        move.b  9(SP),CHDATAWR
+        move.b  8(SP),CHDATAWR
+        move.b  #1,CHDATAWR
+
+        /* Loop eight times reading in */
+        /* 64 bytes of data each time. */
+        moveq.l #8,D1
+CH375_READL1:
+
+        /* Get the status, ensure that */
+        /* it is USB_INT_DISK_READ */
+        jsr     ch375_get_status
+        cmpi.b  #USB_INT_DISK_READ,D0
+        bne.s   ch375_readfail
+
+        /* Send the command to read the data, */
+        /* get back the number of bytes to read. */
+        /* Divide it by eight to match the loop */
+        /* unrolling below (this assumes the count */
+        /* is a multiple of eight). */
+        move.b  #$FF,CH375_STATUS
+        move.b  #CMD_RD_USB_DATA,CHCMDWR
+        clr.l   D0
+        move.b  CHDATARD,D0
+        lsr.l   #3,D0
+
+        /* Loop cnt times reading data */
+CH375_READL2:
+        move.b  CHDATARD,(A0)+
+        move.b  CHDATARD,(A0)+
+        move.b  CHDATARD,(A0)+
+        move.b  CHDATARD,(A0)+
+        move.b  CHDATARD,(A0)+
+        move.b  CHDATARD,(A0)+
+        move.b  CHDATARD,(A0)+
+        move.b  CHDATARD,(A0)+
+        subi.l  #1,D0
+        bne.s   CH375_READL2
+
+        /* After cnt bytes, tell the CH375 */
+        /* to get the next set of data */
+        /* and loop back */
+        move.b  #$FF,CH375_STATUS
+        move.b  #CMD_DISK_RD_GO,CHCMDWR
+        subi.l  #1,D1
+        bne.s   CH375_READL1
+
+        /* Get the status after reading the block */
+        jsr     ch375_get_status
+        cmpi.b  #USB_INT_SUCCESS,D0
+        bne.s   ch375_readfail
+
+        /* Return 1 on success, 0 on failure */
+ch375_readok:
+        moveq.l #1,d0
+        rts
+
+ch375_readfail:
+        moveq.l #0,d0
+        rts
+
+/*
+ * Given a pointer to a 512-byte buffer and an
+ * LBA number, write the block from the buffer
+ * to the CH375. Return 1 on success, 0 otherwise.
+ *
+ * uint32_t ch375_write_block(uint8_t *buf, uint32_t lba)
+ */
+ch375_write_block:
+
+        /* Check that buf isn't NULL */
+        movea.l 4(SP),A0
+        cmp.l   #0,4(SP)
+        beq.w   ch375_writefail
+
+        /* Send the disk write command followed by the LBA in */
+        /* little-endian format, then ask to send one block. */
+        move.b  #$FF,CH375_STATUS
+        move.b  #CMD_DISK_WRITE,CHCMDWR
+        move.b  11(SP),CHDATAWR
+        move.b  10(SP),CHDATAWR
+        move.b  9(SP),CHDATAWR
+        move.b  8(SP),CHDATAWR
+        move.b  #1,CHDATAWR
+
+        /* Loop eight times writing out */
+        /* 64 bytes of data each time. */
+        moveq.l #8,D1
+CH375_WRITEL1:
+
+        /* Get the status, ensure that */
+        /* it is USB_INT_DISK_WRITE */
+        jsr     ch375_get_status
+        cmpi.b  #USB_INT_DISK_WRITE,D0
+        bne.s   ch375_writefail
+
+        /* Send the command to write the data */
+        /* along with the count. Then set D0 */
+        /* to 8 for the loop: it really is 64 */
+        /* but we do loop unrolling. */
+        move.b  #$FF,CH375_STATUS
+        move.b  #CMD_WR_USB_DATA,CHCMDWR
+        move.b  #64,CHDATAWR
+        moveq.l #8,D0
+
+        /* Loop 8 times writing data */
+CH375_WRITEL2:
+        move.b  (A0)+,CHDATAWR
+        move.b  (A0)+,CHDATAWR
+        move.b  (A0)+,CHDATAWR
+        move.b  (A0)+,CHDATAWR
+        move.b  (A0)+,CHDATAWR
+        move.b  (A0)+,CHDATAWR
+        move.b  (A0)+,CHDATAWR
+        move.b  (A0)+,CHDATAWR
+        subi.l  #1,D0
+        bne.s   CH375_WRITEL2
+
+        /* After 64 bytes, tell the CH375 to */
+        /* get ready for the next set of data */
+        /* and loop back */
+        move.b  #$FF,CH375_STATUS
+        move.b  #CMD_DISK_WR_GO,CHCMDWR
+        subi.l  #1,D1
+        bne.s   CH375_WRITEL1
+
+        /* Get the status after writing the block */
+        jsr     ch375_get_status
+        cmpi.b  #USB_INT_SUCCESS,D0
+        bne.s   ch375_writefail
+
+        /* Return 1 on success, 0 on failure */
+ch375_writeok:
+        moveq.l #1,d0
+        rts
+
+ch375_writefail:
+        moveq.l #0,d0
+        rts
+
+/* This comes from xosera_m68k_api.c. */
+/* Delay for D0 milliseconds */
+cpu_delay:
+        move.l 4(A7),D0
+        lsl.l  #8,D0
+        add.l  D0,D0
+L1:     subq.l #1,D0
+        tst.l  D0
+        bne.s  L1
+        rts

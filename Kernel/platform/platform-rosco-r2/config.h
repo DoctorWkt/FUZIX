@@ -41,10 +41,11 @@
 
 #define MAX_BLKDEV 2
 
+/* Block dvices */
 #define CONFIG_IDE
-
 #define CONFIG_SD
 #define SD_DRIVE_COUNT  1
+#define CONFIG_CH375
 
 #define plt_copyright()
 

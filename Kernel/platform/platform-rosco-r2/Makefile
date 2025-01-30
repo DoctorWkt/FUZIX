@@ -1,6 +1,7 @@
 
 CSRCS = devtty.c
 CSRCS += devices.c main.c libc.c
+CSRCS += devch375.c devch375_discard.c
 
 ASRCS = p68000.S crt0.S
 ASRCS += tricks.S
@@ -50,6 +51,7 @@ image:
 	  ../../syscall_fs3.o ../../syscall_exec32.o ../../syscall_exec.o \
 	  blkdev.o devide.o devide_discard.o mbr.o 68000relocate.o \
 	  devsd.o devsd_discard.o \
+	  devch375.o devch375_discard.o \
 	  68000usercopy.o ../../cpu-68000/usermem_std-68000.o devtty.o \
 	  libc.o ../../malloc.o ../../level2.o ../../syscall_level2.o \
 	  ../../select.o > ../../fuzix.map
