@@ -216,10 +216,10 @@ devide_write_l:
 sd_spi_clock:
 	rts
 sd_spi_raise_cs:
-	ori.b  #SPI_CS,COPR
+	move.b  #SPI_CS,COPR
 	rts
 sd_spi_lower_cs:
-	ori.b   #SPI_CS,SOPR
+	move.b   #SPI_CS,SOPR
 	rts
 
 /* This code borrowed from Rosco r2 blockdev/dua_spi_asm.asm */
