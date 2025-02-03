@@ -38,5 +38,45 @@ void device_init(void)
 {
   // devide_init();
   devsd_init();
-  devch375_init();
+  // devch375_init();
+}
+
+/* These functions go in-between the devsd.c code and the assembly code. */
+/* They disable interrupts, do the work and then re-enable them. We need */
+/* this to ensure the bit-banging doesn't get context switched out. */
+
+extern void sd_bb_transmit_byte(uint_fast8_t byte);
+extern uint_fast8_t sd_bb_receive_byte(void);
+extern bool sd_bb_receive_sector(void);
+extern bool sd_bb_transmit_sector(void);
+
+void sd_spi_transmit_byte(uint_fast8_t byte)
+{
+    irqflags_t irq = di();
+    sd_bb_transmit_byte(byte);
+    irqrestore(irq);
+}
+
+uint_fast8_t sd_spi_receive_byte(void)
+{
+    irqflags_t irq = di();
+    uint_fast8_t result= sd_bb_receive_byte();
+    irqrestore(irq);
+    return(result);
+}
+
+bool sd_spi_receive_sector(void)
+{
+    irqflags_t irq = di();
+    bool result= sd_bb_receive_sector();
+    irqrestore(irq);
+    return(result);
+}
+
+bool sd_spi_transmit_sector(void)
+{
+    irqflags_t irq = di();
+    bool result= sd_bb_transmit_sector();
+    irqrestore(irq);
+    return(result);
 }
