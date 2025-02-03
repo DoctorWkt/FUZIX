@@ -28,64 +28,56 @@
 		.globl ch375_write_block
 		.globl cpu_delay
 
-/* Defines for SD card access via SPI */
-SPI_CS_B   = 2	/* Output port pin */
-SPI_SCK_B  = 4	/* Output port pin */
-SPI_COPI_B = 6	/* Output port pin */
-SPI_CIPO_B = 2	/* Input port pin  */
-SPI_CS1_B  = 7	/* Output port pin */
+/* Bit values for output port positions */
+SPI_CS	   = (1<<2)		/* OP2, chip select      */
+SPI_SCK	   = (1<<4)		/* OP4, clock            */
+SPI_COPI   = (1<<6)		/* OP6, MOSI             */
 
-/* Calculate bit values for bit positions */
-SPI_CS	 = (1<<SPI_CS_B)
-SPI_CS1	 = (1<<SPI_CS1_B)
-SPI_SCK	 = (1<<SPI_SCK_B)
-SPI_COPI = (1<<SPI_COPI_B)
-SPI_CIPO = (1<<SPI_CIPO_B)
+SPI_CIPO_B = 2			/* IP2, MISO             */
+SPI_CIPO   = (1<<2)
 
-/* DUART defines */
-#define CTUR $D
-#define CTLR $F
-#define IMR  $B
-#define IVR $19
-
-DUART_BASE_MBR2 = 0xf00001
-R_INPUTPORT = 0x1a
-W_OPR_SETCMD = 0x1c
-W_OPR_RESETCMD = 0x1e
-DUART_INPUT   = DUART_BASE_MBR2 + R_INPUTPORT
-DUART_OUT_LO  = DUART_BASE_MBR2 + W_OPR_SETCMD
-OUT_LO_OFFSET = W_OPR_SETCMD - R_INPUTPORT
-OUT_HI_OFFSET = W_OPR_RESETCMD - W_OPR_SETCMD
+/* XR68C681 DUART registers */
+SRA  = 0xF00003			/* Status register chan A,     in */
+THRA = 0xF00007			/* Tx holding register A,     out */
+CTUR = 0xF0000D			/* Timer upper byte register, out */
+CTLR = 0xF0000F			/* Timer lower byte register, out */
+IMR  = 0xF0000B			/* Interrupt mask register,   out */
+IVR  = 0xF00019			/* Interrupt vector register, out */
+IP   = 0xF0001B			/* Input port register            */
+SOPR = 0xF0001D			/* Set output port register       */
+COPR = 0xF0001F			/* Clear output port register     */
+OUT_LO_OFFSET = SOPR - IP	/* Used to keep timing correct */
+OUT_HI_OFFSET = COPR - SOPR	/* Used to keep timing correct */
 
 /* CH375 I/O addresses */
-#define CHDATARD  $FFF001
-#define CHDATAWR  $FFF001
-#define CHCMDWR   $FFF003
+CHDATARD  = 0xFFF001		/* Read data byte     */
+CHDATAWR  = 0xFFF001		/* Write data byte    */
+CHCMDWR   = 0xFFF003		/* Write command byte */
 
 /* CH375 Commands */
-#define CMD_RESET_ALL           $05
-#define CMD_SET_USB_MODE        $15
-#define CMD_GET_STATUS          $22
-#define CMD_RD_USB_DATA         $28
-#define CMD_WR_USB_DATA         $2B
-#define CMD_DISK_INIT           $51
-#define CMD_DISK_SIZE           $53
-#define CMD_DISK_READ           $54
-#define CMD_DISK_RD_GO          $55
-#define CMD_DISK_WRITE          $56
-#define CMD_DISK_WR_GO          $57
-#define CMD_DISK_READY          $59
+CMD_RESET_ALL    = 0x05
+CMD_SET_USB_MODE = 0x15
+CMD_GET_STATUS   = 0x22
+CMD_RD_USB_DATA  = 0x28
+CMD_WR_USB_DATA  = 0x2B
+CMD_DISK_INIT    = 0x51
+CMD_DISK_SIZE    = 0x53
+CMD_DISK_READ    = 0x54
+CMD_DISK_RD_GO   = 0x55
+CMD_DISK_WRITE   = 0x56
+CMD_DISK_WR_GO   = 0x57
+CMD_DISK_READY   = 0x59
 
 /* CH375 Status Results */
-#define USB_INT_SUCCESS         $14
-#define USB_INT_CONNECT         $15
-#define USB_INT_DISCONNECT      $16
-#define USB_INT_DISK_READ       $1D
-#define USB_INT_DISK_WRITE      $1E
+USB_INT_SUCCESS    = 0x14
+USB_INT_CONNECT    = 0x15
+USB_INT_DISCONNECT = 0x16
+USB_INT_DISK_READ  = 0x1D
+USB_INT_DISK_WRITE = 0x1E
 
 /* Address of the IRQ5 and clock tick vector */
-#define IRQ5_VECTOR   $74
-#define TICK_VECTOR   $114
+IRQ5_VECTOR = 0x74
+TICK_VECTOR = 0x114
 
 .mri 1
 plt_monitor:
@@ -93,8 +85,8 @@ plt_monitor:
 	; copy vectors from FE7000 to 0 (where we saved them)
 	; them jmp to FE8000
 plt_reboot:
-	    or #$0700,sr
-	    bra plt_monitor
+	    or #$0700,sr		; Disable interrupts
+	    bra plt_monitor		; and loop infinitely
 
 init_early:
 	    lea.l udata_block0,a5	; udata ptr
@@ -122,11 +114,10 @@ kernelmem:
 	    move.l #timer_irq,TICK_VECTOR
 	    move.l #ch375_irq5_handler,IRQ5_VECTOR
 
-	    lea.l $F00000,a0
-	    move.b #$80,CTLR(a0)
-	    move.b #$4,CTUR(a0)
-	    move.b #$45,IVR(a0)
-	    move.b #$2A,IMR(a0)
+	    move.b #$80,CTLR
+	    move.b #$4,CTUR
+	    move.b #$45,IVR
+	    move.b #$2A,IMR
 	    rts
 
 timer_irq:
@@ -194,9 +185,9 @@ map_save:
 
 outchar:
 outcharw:
-	btst #2,$00F00003
+	btst #2,SRA
 	beq outcharw
-	move.b d0,$00F00007
+	move.b d0,THRA
 	rts
 ;
 ;	IDE:
@@ -225,17 +216,17 @@ devide_write_l:
 sd_spi_clock:
 	rts
 sd_spi_raise_cs:
-	move.b #4,DUART_OUT_LO
+	ori.b  #SPI_CS,COPR
 	rts
 sd_spi_lower_cs:
-	move.b #0,DUART_OUT_LO
+	ori.b   #SPI_CS,SOPR
 	rts
 
 /* This code borrowed from Rosco r2 blockdev/dua_spi_asm.asm */
 sd_spi_transmit_byte:
 	move.b	4+3(sp),d0		/*   12	 d0 = send byte */
 	movem.l d2-d5,-(a7)		/* 12+32 save regs */
-	move.l	#DUART_OUT_LO,a0	/*   12	 a0 = output LO */
+	move.l	#SOPR,a0		/*   12	 a0 = output LO */
 	lea.l	OUT_HI_OFFSET(a0),a1	/*    8	 a1 = output HI */
 	moveq.l #SPI_SCK,d1		/*    4	 d1 = SCK bit mask */
 	moveq.l #SPI_COPI,d2		/*    4	 d2 = COPI bit mask */
@@ -260,7 +251,7 @@ spi_sb_rts:	rts
 
 sd_spi_receive_byte:
 	movem.l d2-d3/a2,-(a7)		/* 12+24	save regs */
-	move.l	#DUART_INPUT,a0		/* 12 a0 = input */
+	move.l	#IP,a0			/* 12 a0 = input */
 	lea.l	OUT_LO_OFFSET(a0),a1	/* 8  a1 = output LO */
 	lea.l	OUT_HI_OFFSET(a1),a2	/* 8  a2 = output HI */
 	moveq.l #SPI_SCK,d1		/* 4  d1 = SCK bit mask */
@@ -295,7 +286,7 @@ sd_spi_receive_sector:
 	/* kernel v user etc */
 	move.l	blk_op,a0		/* 12	load data buffer */
 	movem.l d2-d4/a2-a3,-(a7)	/*12+40	save regs */
-	move.l	#DUART_INPUT,a1		/*  12	a1 = input */
+	move.l	#IP,a1			/*  12	a1 = input */
 	lea.l	OUT_LO_OFFSET(a1),a2	/*  8	a2 = output LO */
 	lea.l	OUT_HI_OFFSET(a2),a3	/*  8	a3 = output HI */
 	moveq.l #SPI_SCK,d1		/*  4	d1 = SCK bit mask */
@@ -326,7 +317,7 @@ sd_spi_transmit_sector:
 	move.w	#512,d0
 	move.l	blk_op,a0		/* 12	load data buffer */
 	movem.l d2-d6/a2,-(a7)		/* 12+48 save regs */
-	move.l	#DUART_OUT_LO,a1	/*  12	a1 = output LO */
+	move.l	#SOPR,a1		/*  12	a1 = output LO */
 	lea.l	OUT_HI_OFFSET(a1),a2	/*   8	a2 = output HI */
 	moveq.l #SPI_SCK,d2		/*   4	d2 = SCK bit mask */
 	moveq.l #SPI_COPI,d3		/*   4	d3 = COPI bit mask */
