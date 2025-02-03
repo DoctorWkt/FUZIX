@@ -25,8 +25,9 @@ uint_fast8_t devch375_transfer_sector(void)
     uint32_t lba= blk_op.lba;
 
     /* Disable interrupts while we do the transfer */
+    /* but keep IRQ5 enabled as we use it */
     irqflags_t irq = di();
-    irqrestore(5);
+    irqrestore(4);	/* IRQ4 is ignored, 5 is OK */
 
     if (blk_op.is_read) {
 	success= ch375_read_block(blk_op.addr, lba);
