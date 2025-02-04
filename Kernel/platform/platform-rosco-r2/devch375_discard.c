@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <blkdev.h>
 #include <devch375.h>
+#define CHDATARD 0xFFF001	/* One of the CH375 registers */
 
 #ifdef CONFIG_CH375
 
@@ -23,6 +24,7 @@
 /****************************************************************************/
 
 extern uint_fast8_t devch375_transfer_sector(void);
+extern int check_read_byte(void * ptr);
 
 void devch375_init(void)
 {
@@ -32,6 +34,13 @@ void devch375_init(void)
     int i;
 
     kprintf("CH375 device: ");
+
+    /* See if there is a CH375 device attached by trying */
+    /* to read from one of the registers */
+    if (check_read_byte((void *)CHDATARD) == 0) {
+        kprintf("not found (no register)\n");
+        return;
+    }
 
     /* See if the device exists */
     /* Send the reset command and wait 50mS */

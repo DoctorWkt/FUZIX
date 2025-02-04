@@ -27,6 +27,7 @@
 		.globl ch375_read_block
 		.globl ch375_write_block
 		.globl cpu_delay
+		.globl check_read_byte
 
 /* Bit values for output port positions */
 SPI_CS	   = (1<<2)		/* OP2, chip select      */
@@ -569,3 +570,27 @@ L1:     subq.l #1,D0
         tst.l  D0
         bne.s  L1
         rts
+
+/* This comes from EmuTOS */
+/* check_read_byte: verify access to memory */
+/* pointed to by the given ptr. Callable from C: */
+/* int check_read_byte(void *ptr) */
+check_read_byte:
+	move.l	sp,d1
+	move.l	(8),a1		/* Get the current bus error vector */
+	lea	berr(pc),a0	/* Replace it with berr */
+	move.l	a0,(8)
+	moveq	#0,d0		/* Assume we will fail */
+	nop
+
+	move.l	4(sp),a0	/* Get the address to test */
+	tst.b	(a0)		/* Try to access it - may cause bus err */
+	nop			/* Flush the CPU's pipeline */
+
+	moveq	#1,d0		/* We passed with no bus error */
+
+berr:
+	move.l	a1,(8)		/* Restore the bus error vector */
+	move.l	d1,sp		/* Reset the stack pointer */
+	nop
+	rts			/* and return from the bus error */

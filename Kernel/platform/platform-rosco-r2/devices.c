@@ -36,9 +36,9 @@ bool validdev(uint16_t dev)
 
 void device_init(void)
 {
-  // devide_init();
+  /* devide_init(); */
   devsd_init();
-  // devch375_init();
+  devch375_init();
 }
 
 /* These functions go in-between the devsd.c code and the assembly code. */
