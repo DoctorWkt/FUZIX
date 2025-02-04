@@ -1,6 +1,6 @@
 # FUZIX Port to the Rosco r2 SBC
 
-Warren Toomey - 2025/01/30
+Warren Toomey - 2025/02/04
 
 ## Introduction
 
@@ -33,8 +33,8 @@ this script to make the SD card image `sdcard.img` which has the
 bootable kernel in partition 1 and the populated FUZIX filesystem
 in partition 2.
 
-However, see the SD Card section below for why you can't boot
-using the SD card at present.
+There is a bzipped copy of a recent `sdcard.img` here in the repository
+if you want to try it without installing the tool chain.
 
 ## Configuration
 
@@ -82,23 +82,28 @@ assembly functions to bit-bang the SD card using the DUART:
                 .globl sd_spi_clock
                 .globl sd_spi_raise_cs
                 .globl sd_spi_lower_cs
-                .globl sd_spi_transmit_byte
-                .globl sd_spi_receive_byte
-                .globl sd_spi_transmit_sector
-                .globl sd_spi_receive_sector
+                .globl sd_bb_transmit_byte
+                .globl sd_bb_receive_byte
+                .globl sd_bb_transmit_sector
+                .globl sd_bb_receive_sector
 ```
 
 and the high-level SD card code is in `Kernel/dev/devsd.c` and
-`Kernel/dev/devsd_discard.c`. However, the kernel complains about
-timeouts and retries when I try to use the SD card as the root
-filesystem. I need help here to get this to work.
+`Kernel/dev/devsd_discard.c`.
+
+Copy the SD card image `sdcard.img` to your SD card. Under Linux I do:
+
+```
+cat sdcard.img > /dev/sdc; sync; sync
+```
+
+At boot time, the SD card should appear as `hda` with two partitions.
+Use the boot device `hda2` and login as `root` with no password.
 
 ## CH375 USB
 
-This works and I can boot to a `root` login, login and run commands.
-I suspect that disk writes are not working perfectly yet. I literally
-got it to run a few minutes ago.
+Because the Rosco r2 SBC boots from the SD card, you need to copy
+the SD card image `sdcard.img` to both your SD card and your USB drive.
 
-If you have the CH375 expansion board, then just copy the `sdcard.img`
-file to it. At boot time, the CH375 device should appear as `hdb`
-with two partitions. Boot off `hdb2`.
+At boot time, the SD card should appear as `hdb` with two partitions.
+Use the boot device `hdb2` and login as `root` with no password.
