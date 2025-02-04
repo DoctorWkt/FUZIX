@@ -9,6 +9,45 @@ https://github.com/rosco-m68k/rosco_m68k
 
 It's a work in progress and some things don't work well yet.
 
+## Booting with an SD Card
+
+There is a bzipped copy of a recent SD card image `sdcard.img` here
+in the repository if you want to try it without installing the tool chain.
+
+Copy the card image `sdcard.img` to your SD card. Under Linux I do:
+
+```
+cat sdcard.img > /dev/sdc; sync; sync
+```
+
+At boot time, the SD card should appear as `hda` with two partitions.
+Use the boot device `hda2` and login as `root` with no password:
+
+```
+FUZIX version 0.5
+Copyright (c) 1988-2002 by H.F.Bower, D.Braun, S.Nitschke, H.Peraza
+Copyright (c) 1997-2001 by Arcady Schekochikhin, Adriano C. R. da Cunha
+Copyright (c) 2013-2015 Will Sowerbutts <will@sowerbutts.com>
+Copyright (c) 2014-2025 Alan Cox <alan@etchedpixels.co.uk>
+Devboot
+Motorola 68010 processor detected.
+1024KiB total RAM, 917KiB available to processes (125 processes max)
+Enabling interrupts ... ok.
+SD drive 0: hda: hda1 hda2 
+CH375 device: not found
+bootdev: hda2
+...
+login: root
+```
+
+## Booting with the CH375 Device and a USB Drive
+
+Because the Rosco r2 SBC boots from the SD card, you need to copy
+the SD card image `sdcard.img` to both your SD card and your USB drive.
+
+At boot time, the SD card should appear as `hdb` with two partitions.
+Use the boot device `hdb2` and login as `root` with no password.
+
 ## Building FUZIX
 
 You will need the toolchain described in
@@ -32,9 +71,6 @@ There is a shell script here called `mk_fs_img`. Once you have
 this script to make the SD card image `sdcard.img` which has the
 bootable kernel in partition 1 and the populated FUZIX filesystem
 in partition 2.
-
-There is a bzipped copy of a recent `sdcard.img` here in the repository
-if you want to try it without installing the tool chain.
 
 ## Configuration
 
@@ -73,7 +109,7 @@ DUART up for 115200 baud. The Fuzix code then does something which
 scrambles the 115200 baud setting. Until I can figure it out, I've
 just disabled it.
 
-## SD card support.
+## The SD Card
 
 The kernel is configured to have SD card support. The file `p68000.S` has
 assembly functions to bit-bang the SD card using the DUART:
@@ -90,20 +126,3 @@ assembly functions to bit-bang the SD card using the DUART:
 
 and the high-level SD card code is in `Kernel/dev/devsd.c` and
 `Kernel/dev/devsd_discard.c`.
-
-Copy the SD card image `sdcard.img` to your SD card. Under Linux I do:
-
-```
-cat sdcard.img > /dev/sdc; sync; sync
-```
-
-At boot time, the SD card should appear as `hda` with two partitions.
-Use the boot device `hda2` and login as `root` with no password.
-
-## CH375 USB
-
-Because the Rosco r2 SBC boots from the SD card, you need to copy
-the SD card image `sdcard.img` to both your SD card and your USB drive.
-
-At boot time, the SD card should appear as `hdb` with two partitions.
-Use the boot device `hdb2` and login as `root` with no password.
