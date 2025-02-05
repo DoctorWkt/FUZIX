@@ -57,6 +57,23 @@ If you have installed 1M of expansion RAM on the daughter board and closed
 jumper JP4, then the kernel will see the extra RAM and report that you have
 2M of RAM.
 
+```
+FUZIX version 0.5
+Copyright (c) 1988-2002 by H.F.Bower, D.Braun, S.Nitschke, H.Peraza
+Copyright (c) 1997-2001 by Arcady Schekochikhin, Adriano C. R. da Cunha
+Copyright (c) 2013-2015 Will Sowerbutts <will@sowerbutts.com>
+Copyright (c) 2014-2025 Alan Cox <alan@etchedpixels.co.uk>
+Devboot
+Motorola 68010 processor detected.
+2048KiB total RAM, 1941KiB available to processes (125 processes max)
+Enabling interrupts ... ok.
+SD drive 0: hda: hda1 hda2 
+CH375 device: hdb: hdb1 hdb2 
+bootdev: hdb2
+...
+login: root
+```
+
 ## Building FUZIX
 
 You will need the toolchain described in
