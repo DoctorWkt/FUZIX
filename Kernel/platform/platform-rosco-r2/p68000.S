@@ -99,11 +99,20 @@ plt_idle:
 	    rts
 
 init_hardware:
-	    ; set system RAM size(hardcode hacks for now)
-	    move.w #1024,d0
+	    ; See if there is any RAM above 1M
+	    move.l #$100000,sp@-
+	    bsr check_read_byte
+	    addq.l #4,sp
+	    tst.l d0
+	    beq .only1M
+	    move.w #2048,d0		; Yes, assume 2M of RAM
+	    bra kernelmem
+.only1M:    move.w #1024,d0		; No, only 1M of RAM
+
 kernelmem:
 	    move.w d0,ramsize
 	    move.l #_end+512,d1
+
 	    lsr.l #8,d1
 	    lsr.l #2,d1
 	    sub.w  d1,d0		; Guess for kernel
@@ -584,7 +593,8 @@ check_read_byte:
 	nop
 
 	move.l	4(sp),a0	/* Get the address to test */
-	tst.b	(a0)		/* Try to access it - may cause bus err */
+	tst.b	(a0)		/* Try to access it - this may cause */
+				/* a bus error and we would jump to berr */
 	nop			/* Flush the CPU's pipeline */
 
 	moveq	#1,d0		/* We passed with no bus error */
