@@ -7,7 +7,6 @@ ASRCS = p68000.S crt0.S
 ASRCS += tricks.S
 
 DSRCS = ../../dev/mbr.c ../../dev/blkdev.c
-DSRCS += ../../dev/devide.c ../../dev/devide_discard.c
 DSRCS += ../../dev/devsd.c ../../dev/devsd_discard.c
 DOBJS = $(patsubst ../../dev/%.c,%.o, $(DSRCS))
 
@@ -49,7 +48,7 @@ image:
 	  ../../syscall_other.o ../../mm.o ../../flat.o ../../blk512.o \
 	  ../../tty.o ../../devsys.o ../../usermem.o ../../syscall_fs2.o \
 	  ../../syscall_fs3.o ../../syscall_exec32.o ../../syscall_exec.o \
-	  blkdev.o devide.o devide_discard.o mbr.o 68000relocate.o \
+	  blkdev.o mbr.o 68000relocate.o \
 	  devsd.o devsd_discard.o \
 	  devch375.o devch375_discard.o \
 	  68000usercopy.o ../../cpu-68000/usermem_std-68000.o devtty.o \

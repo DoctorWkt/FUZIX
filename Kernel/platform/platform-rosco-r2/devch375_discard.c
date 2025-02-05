@@ -48,7 +48,7 @@ void devch375_init(void)
     cpu_delay(50);
 
     /* Now set the USB mode to 6. This should */
-    /* cause a level 3 interrupt which will */
+    /* cause a level 5 interrupt which will */
     /* update the CH375 status in memory. */
     ch375_send_cmd(CMD_SET_USB_MODE);
     ch375_send_data(6);
@@ -89,6 +89,7 @@ void devch375_init(void)
       	kprintf("ch375 initialisation failed!\n");
       	return;
     }
+
     /* Read eight bytes back from the CH375 */
     for (i=0; i<8; i++)
       buf[i]= ch375_read_data();

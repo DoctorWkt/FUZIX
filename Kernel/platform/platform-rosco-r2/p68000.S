@@ -9,8 +9,6 @@
 		.globl outchar
 		.globl plt_monitor
 		.globl udata_block0
-		.globl devide_read_data
-		.globl devide_write_data
 		.globl sd_spi_clock
 		.globl sd_spi_raise_cs
 		.globl sd_spi_lower_cs
@@ -82,9 +80,6 @@ TICK_VECTOR = 0x114
 
 .mri 1
 plt_monitor:
-	; Need to check if top of memory at FE7000, if so
-	; copy vectors from FE7000 to 0 (where we saved them)
-	; them jmp to FE8000
 plt_reboot:
 	    or #$0700,sr		; Disable interrupts
 	    bra plt_monitor		; and loop infinitely
@@ -198,26 +193,6 @@ outcharw:
 	btst #2,SRA
 	beq outcharw
 	move.b d0,THRA
-	rts
-;
-;	IDE:
-;
-devide_read_data:
-	move.l blk_op,a0
-	move.l #$00FFD000,a1
-	move.w #255,d0
-devide_read_l:
-	move.w (a1),(a0)+
-	dbra d0,devide_read_l
-	rts
-
-devide_write_data:
-	move.l blk_op,a0
-	move.l #$00FFD000,a1
-	move.w #255,d0
-devide_write_l:
-	move.w (a0)+,(a1)
-	dbra d0,devide_write_l
 	rts
 
 ;
@@ -571,6 +546,7 @@ ch375_writefail:
 
 /* This comes from xosera_m68k_api.c. */
 /* Delay for D0 milliseconds */
+/* Assumes CPU running at 10MHz */
 cpu_delay:
         move.l 4(A7),D0
         lsl.l  #8,D0
