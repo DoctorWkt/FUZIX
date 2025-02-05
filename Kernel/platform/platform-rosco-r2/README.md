@@ -42,11 +42,20 @@ login: root
 
 ## Booting with the CH375 Device and a USB Drive
 
-Because the Rosco r2 SBC boots from the SD card, you need to copy
+If you have built the CH375 daughter board as described
+[here](https://github.com/DoctorWkt/xv6-rosco-r2/tree/ch375/hardware)
+then you can copy the FUZIX filesystem to a USB drive and mount it
+as the root device.
+
+However, as the Rosco r2 SBC boots from the SD card, you need to copy
 the SD card image `sdcard.img` to both your SD card and your USB drive.
 
 At boot time, the SD card should appear as `hdb` with two partitions.
 Use the boot device `hdb2` and login as `root` with no password.
+
+If you have installed 1M of expansion RAM on the daughter board and closed
+jumper JP4, then the kernel will see the extra RAM and report that you have
+2M of RAM.
 
 ## Building FUZIX
 
