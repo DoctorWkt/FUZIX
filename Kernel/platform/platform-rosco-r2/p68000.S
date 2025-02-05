@@ -14,10 +14,10 @@
 		.globl sd_spi_clock
 		.globl sd_spi_raise_cs
 		.globl sd_spi_lower_cs
-		.globl sd_bb_transmit_byte
-		.globl sd_bb_receive_byte
-		.globl sd_bb_transmit_sector
-		.globl sd_bb_receive_sector
+		.globl sd_spi_transmit_byte
+		.globl sd_spi_receive_byte
+		.globl sd_spi_transmit_sector
+		.globl sd_spi_receive_sector
 		.globl ch375_irq5_handler
 		.globl ch375_send_cmd
 		.globl ch375_send_data
@@ -233,7 +233,7 @@ sd_spi_lower_cs:
 	rts
 
 /* This code borrowed from Rosco r2 blockdev/dua_spi_asm.asm */
-sd_bb_transmit_byte:
+sd_spi_transmit_byte:
 	move.b	4+3(sp),d0		/*   12	 d0 = send byte */
 	movem.l d2-d5,-(a7)		/* 12+32 save regs */
 	move.l	#SOPR,a0		/*   12	 a0 = output LO */
@@ -259,7 +259,7 @@ sd_bb_transmit_byte:
 	movem.l (a7)+,d2-d5	/* 12+32  restore regs */
 spi_sb_rts:	rts
 
-sd_bb_receive_byte:
+sd_spi_receive_byte:
 	movem.l d2-d3/a2,-(a7)		/* 12+24	save regs */
 	move.l	#IP,a0			/* 12 a0 = input */
 	lea.l	OUT_LO_OFFSET(a0),a1	/* 8  a1 = output LO */
@@ -289,7 +289,7 @@ sd_bb_receive_byte:
 				/*	d0 = result read byte */
 spi_rb_rts:	rts
 
-sd_bb_receive_sector:
+sd_spi_receive_sector:
 	move.w	#512,d0
 	/* Get the argument - address of buffer */
 	/* As we are a flat system we don't have to worry about */
@@ -323,7 +323,7 @@ sd_bb_receive_sector:
 	movem.l (a7)+,d2-d4/a2-a3	/* 12+40 restore regs */
 	rts
 
-sd_bb_transmit_sector:
+sd_spi_transmit_sector:
 	move.w	#512,d0
 	move.l	blk_op,a0		/* 12	load data buffer */
 	movem.l d2-d6/a2,-(a7)		/* 12+48 save regs */
