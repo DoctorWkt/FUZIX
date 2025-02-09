@@ -1,7 +1,7 @@
 #
 APPS = util cmd sh games cave cpm v7games games cursesgames \
        as09 ld09 netd MWC flashrom ue cpmfs plato \
-       emulators cpnet dw assembler CC cpp ar
+       emulators cpnet dw assembler CC cpp ar levee
 
 .PHONY: $(APPS)
 
